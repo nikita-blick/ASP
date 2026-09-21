@@ -10,4 +10,10 @@
 .photo-container > img
 {
     width:50%;
+  
+}
+.photo-container div
+{
+    height:64vh;
+    border:solid 1px;
 }
