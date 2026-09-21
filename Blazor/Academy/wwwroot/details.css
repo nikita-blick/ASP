@@ -7,13 +7,13 @@
 {
     width:38%;
 }
-.photo-container > img
+.photo-container img
 {
     width:50%;
   
 }
 .photo-container div
 {
-    height:64vh;
-    border:solid 1px;
+    min-height: 384px;
+    border: solid 1px;
 }

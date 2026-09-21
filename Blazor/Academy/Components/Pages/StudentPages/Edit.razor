@@ -17,6 +17,7 @@
 }
 else
 {
+	<h1>@Student.FullName edit</h1>
 		<div class="row">
 			<div class="col-md-4">
 				<EditForm method="post" Model="Student" OnValidSubmit="UpdateStudent" FormName="edit" Enhance>
@@ -77,10 +78,12 @@ else
 						</div>
 						</div>
 						<div class="photo-container">
-						@if (Student.photo != null)
-						{
-									<Photo image="@Student.photo"/>
-						}
+						<div>
+							@if (Student.photo != null)
+							{
+										<Photo image="@Student.photo"/>
+							}
+						</div>
 							<InputFile OnChange="LoadPhoto" />
 
 						</div>
