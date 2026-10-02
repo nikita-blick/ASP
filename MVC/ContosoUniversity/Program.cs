@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ContosoUniversity.Data;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ContosoUniversityContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("ContosoUniversityContext") ?? throw new InvalidOperationException("Connection string 'ContosoUniversityContext' not found.")));
+	options.UseSqlServer(builder.Configuration.GetConnectionString("ContosoUniversityContext") ?? throw new InvalidOperationException("Connection string 'ContosoUniversityContext' not found.")));
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
@@ -19,16 +19,29 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
+
 app.UseRouting();
 
 app.UseAuthorization();
 
-app.MapStaticAssets();
-
 app.MapControllerRoute(
 	name: "default",
-	pattern: "{controller=Home}/{action=Index}/{id?}")
-	.WithStaticAssets();
+	pattern: "{controller=Home}/{action=Index}/{id?}");
 
 
+using (IServiceScope scope = app.Services.CreateScope())
+{
+	IServiceProvider provider = scope.ServiceProvider;
+	try
+	{
+		ContosoUniversityContext context = provider.GetRequiredService<ContosoUniversityContext>();
+		DbInitializer.Initialize(context);
+	}
+	catch (Exception ex)
+	{
+		ILogger<Program> logger = provider.GetRequiredService<ILogger<Program>>();
+		logger.LogError(ex, ex.Message);
+	}
+}
 app.Run();
