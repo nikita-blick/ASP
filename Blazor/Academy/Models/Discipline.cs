@@ -7,7 +7,7 @@ namespace Academy.Models
 	{
 		[Key]
 		[Column(TypeName = "SMALLINT")]
-		public int discipline_id {  get; set; }
+		public int discipline_id { get; set; }
 
 		[Required]
 		public string discipline_name { get; set; }
@@ -15,5 +15,8 @@ namespace Academy.Models
 		[Required]
 		[Column(TypeName = "TINYINT")]
 		public int number_of_lessons { get; set; }
+
+		//Navigation properties:
+		public ICollection<TeachersDisciplinesRelation> TeachersRelations { get; set; } = default!;
 	}
 }
