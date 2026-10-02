@@ -1,9 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Academy.Models
 {
-	public class Teacher:Human
+	public class Teacher : Human
 	{
 		[Key]
 		[Column("teacher_id", TypeName = "SMALLINT")]
@@ -15,8 +16,7 @@ namespace Academy.Models
 		[Column(TypeName = "SMALLMONEY")]
 		public decimal rate { get; set; }
 
-
 		//Navigation properties:
-		public ICollection<TeachersDisciplinesRelation> DisciplinesRelations { get; set; } = default!;
+		public ObservableCollection<TeachersDisciplinesRelation> DisciplinesRelations { get; set; } = default!;
 	}
 }
