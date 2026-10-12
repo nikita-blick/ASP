@@ -20,9 +20,46 @@ namespace ContosoUniversity.Controllers
 		}
 
 		// GET: Students
-		public async Task<IActionResult> Index()
+		public async Task<IActionResult> Index(string sortOrder, string searchString, int? pageNumber)
 		{
-			return View(await _context.Students.ToListAsync());
+			ViewData["NameSortParam"] = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
+			ViewData["DateSortParam"] = sortOrder == "Date" ? "date_desc" : "Date";
+			if (searchString != null) pageNumber = 1;
+			ViewData["CurrentFilter"] = searchString;
+
+			IQueryable<Student> students = from student in _context.Students select student;
+
+			if (!String.IsNullOrEmpty(searchString))
+			{
+				students = students.Where
+				(
+					s =>
+					s.LastName.Contains(searchString) ||
+					s.FirstName.Contains(searchString)
+				);
+			}
+
+			switch (sortOrder)
+			{
+				case "name_desc": students = students.OrderByDescending(s => s.LastName); break;
+				case "date_desc": students = students.OrderByDescending(s => s.EnrollmentDate); break;
+				case "Date": students = students.OrderBy(s => s.EnrollmentDate); break;
+				default: students = students.OrderBy(s => s.LastName); break;
+			}
+
+			int pageSize = 2;
+			return View
+			(
+				await PaginatedList<Student>.CreateAsync
+				(
+					students.AsNoTracking(),
+					pageNumber ?? 1,
+					pageSize
+				)
+			);
+			//return View(await students.AsNoTracking().ToListAsync());
+			//return View(await _context.Students.AsNoTracking().ToListAsync());
+			//return View(await _context.Students.ToListAsync());
 		}
 
 		// GET: Students/Details/5
