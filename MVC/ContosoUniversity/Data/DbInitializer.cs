@@ -1,4 +1,4 @@
-﻿#define DB_INIT_1
+﻿#define DB_INIT_2
 
 #if DB_INIT_1
 using ContosoUniversity.Data;
@@ -65,12 +65,12 @@ namespace ContosoUniversity.Data
 			context.SaveChanges();
 		}
 	}
-}
+} 
 #endif
 
 #if DB_INIT_2
-using RazorPages.Data;
-using RazorPages.Models;
+using ContosoUniversity.Data;
+using ContosoUniversity.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -156,6 +156,7 @@ namespace ContosoUniversity.Data
 			};
 
 			context.AddRange(students);
+			context.SaveChanges();
 
 			var abercrombie = new Instructor
 			{
@@ -202,6 +203,7 @@ namespace ContosoUniversity.Data
 			};
 
 			context.AddRange(instructors);
+			context.SaveChanges();
 
 			var officeAssignments = new OfficeAssignment[]
 			{
@@ -217,6 +219,7 @@ namespace ContosoUniversity.Data
 			};
 
 			context.AddRange(officeAssignments);
+			context.SaveChanges();
 
 			var english = new Department
 			{
@@ -259,6 +262,7 @@ namespace ContosoUniversity.Data
 			};
 
 			context.AddRange(departments);
+			context.SaveChanges();
 
 			var chemistry = new Course
 			{
@@ -335,6 +339,7 @@ namespace ContosoUniversity.Data
 			};
 
 			context.AddRange(courses);
+			context.SaveChanges();
 
 			var enrollments = new Enrollment[]
 			{
@@ -398,5 +403,5 @@ namespace ContosoUniversity.Data
 			context.SaveChanges();
 		}
 	}
-} 
+}
 #endif
