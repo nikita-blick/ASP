@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ContosoUniversity.Data;
 using ContosoUniversity.Models;
+using ContosoUniversity.Models.ViewModels;
 
 namespace ContosoUniversity.Controllers
 {
@@ -63,6 +64,7 @@ namespace ContosoUniversity.Controllers
 			}
 
 			var instructor = await _context.Instructors
+				.Include(i => i.OfficeAssignment)
 				.FirstOrDefaultAsync(m => m.ID == id);
 			if (instructor == null)
 			{
@@ -75,6 +77,9 @@ namespace ContosoUniversity.Controllers
 		// GET: Instructors/Create
 		public IActionResult Create()
 		{
+			Instructor instructor = new Instructor();
+			instructor.CourseAssignments = new List<CourseAssignment>();
+			PopulateAssignmendCourseData(instructor);
 			return View();
 		}
 
@@ -83,14 +88,28 @@ namespace ContosoUniversity.Controllers
 		// For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
 		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public async Task<IActionResult> Create([Bind("ID,LastName,FirstName,HireDate")] Instructor instructor)
+		public async Task<IActionResult> Create([Bind("ID,LastName,FirstName,HireDate")] Instructor instructor, string[] selectedCourses)
 		{
+			if (selectedCourses != null)
+			{
+				instructor.CourseAssignments = new List<CourseAssignment>();
+				foreach (string course in selectedCourses)
+				{
+					CourseAssignment courseAssignment = new CourseAssignment
+					{
+						InstructorID = instructor.ID,
+						CourseID = Convert.ToInt32(course)
+					};
+					instructor.CourseAssignments.Add(courseAssignment);
+				}
+			}
 			if (ModelState.IsValid)
 			{
 				_context.Add(instructor);
 				await _context.SaveChangesAsync();
 				return RedirectToAction(nameof(Index));
 			}
+			PopulateAssignmendCourseData(instructor);
 			return View(instructor);
 		}
 
@@ -102,11 +121,19 @@ namespace ContosoUniversity.Controllers
 				return NotFound();
 			}
 
-			var instructor = await _context.Instructors.FindAsync(id);
+			var instructor = await _context
+									.Instructors
+									.Include(i => i.OfficeAssignment)
+									.Include(i => i.CourseAssignments)
+										.ThenInclude(ca => ca.Course)
+									.AsNoTracking()
+									.FirstOrDefaultAsync(i => i.ID == id);
+
 			if (instructor == null)
 			{
 				return NotFound();
 			}
+			PopulateAssignmendCourseData(instructor);
 			return View(instructor);
 		}
 
@@ -115,33 +142,67 @@ namespace ContosoUniversity.Controllers
 		// For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
 		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public async Task<IActionResult> Edit(int id, [Bind("ID,LastName,FirstName,HireDate")] Instructor instructor)
+		//public async Task<IActionResult> Edit(int id, [Bind("ID,LastName,FirstName,HireDate")] Instructor instructor)
+		public async Task<IActionResult> Edit(int id, string[] selectedCourses)
 		{
-			if (id != instructor.ID)
-			{
-				return NotFound();
-			}
+			//if (id != null)
+			//{
+			//	return NotFound();
+			//}
 
-			if (ModelState.IsValid)
+			Instructor instructor = await _context.Instructors
+										.Include(i => i.OfficeAssignment)
+										.Include(i => i.CourseAssignments)
+											.ThenInclude(ca => ca.Course)
+										.FirstOrDefaultAsync(i => i.ID == id);
+
+			/*if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(instructor);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!InstructorExists(instructor.ID))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(Index));
+            }*/
+
+			Task<bool> ok = TryUpdateModelAsync<Instructor>
+			(
+				instructor,
+				"",
+				i => i.FirstName, i => i.LastName, i => i.HireDate, i => i.OfficeAssignment
+			);
+
+			if (ok.IsCompleted)
 			{
-				try
+				if (String.IsNullOrWhiteSpace(instructor.OfficeAssignment?.Location))
+					instructor.OfficeAssignment = null;
+
+				UpdateInstructorCourses(selectedCourses, instructor);
+				//try
 				{
-					_context.Update(instructor);
 					await _context.SaveChangesAsync();
 				}
-				catch (DbUpdateConcurrencyException)
-				{
-					if (!InstructorExists(instructor.ID))
-					{
-						return NotFound();
-					}
-					else
-					{
-						throw;
-					}
-				}
-				return RedirectToAction(nameof(Index));
+				//catch (DbUpdateException ex)
+				//{
+				//	ModelState.AddModelError("", "Невозможно обновить данные");
+				//	return View(instructor);
+				//}
 			}
+			UpdateInstructorCourses(selectedCourses, instructor);
+			PopulateAssignmendCourseData(instructor);
+			//return Redirect($"/instructors/Details/{instructor.ID}");
 			return View(instructor);
 		}
 
@@ -182,5 +243,87 @@ namespace ContosoUniversity.Controllers
 		{
 			return _context.Instructors.Any(e => e.ID == id);
 		}
+
+		/////////////////////////////////////////////////////////////////////////////////////
+
+		void PopulateAssignmendCourseData(Instructor instructor)
+		{
+			DbSet<Course> courses = _context.Courses;
+			HashSet<int> assignedCourses = new HashSet<int>
+			(
+				instructor.CourseAssignments.Select(c => c.CourseID)
+			);
+			List<AssignedCourseData> viewModel = new List<AssignedCourseData>();
+			foreach (Course course in courses)
+			{
+				viewModel.Add
+				(
+					new AssignedCourseData
+					{
+						CourseID = course.CourseID,
+						Title = course.Title,
+						Assigned = assignedCourses.Contains(course.CourseID)
+					}
+				);
+			}
+			ViewData["Courses"] = viewModel;
+		}
+		void UpdateInstructorCourses(string[] selectedCourses, Instructor instructor)
+		{
+			if (selectedCourses == null)
+			{
+				instructor.CourseAssignments = new List<CourseAssignment>();
+				return;
+			}
+
+			Course[] allCourses = _context.Courses.ToArray();
+			Course[] courses = new Course[selectedCourses.Length];
+			ICollection<CourseAssignment> courseAssignments = new List<CourseAssignment>();//new CourseAssignment[selectedCourses.Length];
+			for (int i = 0; i < courses.Length; i++)
+			{
+				courses[i] = allCourses.Where(c => c.CourseID.ToString() == selectedCourses[i]).First();
+				courseAssignments.Add(new CourseAssignment { CourseID = courses[i].CourseID, InstructorID = instructor.ID });
+				//courseAssignments[i] = new CourseAssignment { CourseID = courses[i].CourseID, InstructorID = instructor.ID };
+			}
+			instructor.CourseAssignments = courseAssignments;
+
+			return;
+
+			HashSet<string> selectedCoursesHS = new HashSet<string>(selectedCourses);
+			HashSet<int> instructorCoursesHS = new HashSet<int>
+			(
+				instructor.CourseAssignments.Select(c => c.Course.CourseID)
+			);
+
+			foreach (Course course in _context.Courses)
+			{
+				if (selectedCoursesHS.Contains(course.CourseID.ToString()))
+				{
+					if (!instructorCoursesHS.Contains(course.CourseID))
+					{
+						instructor.CourseAssignments.Add
+						(
+							new CourseAssignment
+							{
+								InstructorID = instructor.ID,
+								CourseID = course.CourseID
+							}
+						);
+					}
+					else
+					{
+						if (instructorCoursesHS.Contains(course.CourseID))
+						{
+							CourseAssignment courseToRemove =
+								instructor
+								.CourseAssignments
+								.FirstOrDefault(i => i.CourseID == course.CourseID);
+							_context.Remove(courseToRemove);
+						}
+					}
+				}
+			}
+		}
+
 	}
 }
